@@ -9,7 +9,7 @@ In this repository I will:
 File Organization:
 
 1. src
-- This folder will contain .rmd and knitted .html files
+- This folder will contain .rmd and knitted .html files I will create for tasks 3 & 4
 
 2. data
 - This folder will contain the .csv data files I will work with for tasks 3 & 4
