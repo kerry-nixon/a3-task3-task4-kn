@@ -1,0 +1,92 @@
+---
+title: 'Assignment3-Task4: Naples Reef Purple Urchins'
+author: "Kerry Nixon"
+date: "11/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(janitor)
+library(here)
+library(lubridate)
+library(kableExtra)
+```
+
+**Data Source:** Data: Reed, D. 2020. SBC LTER: Reef: Long-term experiment: Kelp removal: Urchin size frequency distribution ver 20. Environmental Data Initiative. https://doi.org/10.6073/pasta/5a1e9ef03aa47bd2225c0bb98a02a63b.
+
+```{r}
+# Reading in the data, saving as object in R environment
+urchins_data <- read_csv(here("data","urchins.csv")) %>% 
+  clean_names() # Using janitor::clean_names() to format column titles
+```
+
+## Comparing Mean Size for Purple Urchins in Control vs. Annual Sections of Naples Reef
+
+I will filter the urchins data set into a new subset only including purple urchin observations at the Naples Reef site, in January of 2010, so as to allow for comparison between urchin sizes with the control versus annual treatment groups. To make some initial comparisons I will create exploratory histograms and QQ-plots to see the size distribution and normality of the samples. I will also create a table of basic summary statistics, and finally, perform a two sample t-test to compare the means of the two groups.
+
+```{r}
+# Formatting dates, filtering data by desired variables, creating new object
+purple_urchins_jan2010 <- urchins_data %>% 
+  mutate("date_ymd" = mdy(date)) %>% 
+  mutate("year" = year(date_ymd)) %>% 
+  mutate("month" = month(date_ymd)) %>% 
+  filter(common_name == "Purple Urchin",
+         site == "NAPL",
+         month == 1,
+         year == 2010)
+```
+
+#### Exploratory Data Visualization
+
+```{r}
+
+# Exploratory histograms comparing size distribution and normality by treatment
+ggplot(data = purple_urchins_jan2010, aes(x = size)) +
+  geom_histogram(binwidth = 0.5) +
+  facet_grid(~treatment) +
+  labs(x = "Size (cm)",
+       y = "Number of Urchins")
+
+# Exploratory QQ-plot comparing size distribution by treatment and normality by treatment
+ggplot(data = purple_urchins_jan2010, aes(sample = size)) +
+  geom_qq() +
+  facet_wrap(~treatment) +
+  labs(x = "Theoretical Values",
+       y = "Sample Values")
+
+# Creating a basic summary table
+purple_urchins_jan2010_summary <- purple_urchins_jan2010 %>% 
+  group_by(treatment) %>% 
+  summarize(
+    "mean_size_cm" = mean(size),
+    "median_size_cm" = median(size),
+    "sd_size_cm" = sd(size),
+    "sample_size" = n())
+
+# Returning the summary table with formatting
+kbl(purple_urchins_jan2010_summary) %>% 
+  kable_styling(full_width = FALSE, "hover")
+```
+#### T-test to compare sample means
+
+I will separate the data frame by treatment group and pull vectors for each in order to compare their respective means with a t-test. 
+
+```{r}
+# Separating the data frame into vectors for each treatment
+annual_sample <- purple_urchins_jan2010 %>% 
+  filter(treatment == "ANNUAL") %>% 
+  pull(size)
+
+control_sample <- purple_urchins_jan2010 %>% 
+  filter(treatment == "CONTROL") %>% 
+  pull(size)
+
+# Running a two sample t-test with the newly created vectors
+t.test(annual_sample, control_sample)
+```
+
+
+**Analysis:** The exploratory histograms show that the sample populations are generally bell shaped. The QQ-Plots show that the samples are fairly normally distributed because the relationships plotted are close to linear with a few observations that may point to a very slight positive skew in the annual treatment group. Because the sample sizes are over 30 (60 for annual treatment, 62 for control treatment) the central limit theorem would allow us to assume that the means will be normally distributed. The means for the samples of each treatment type are 0.19 cm apart, which is a 4.97% difference in means. Percent difference was calculated by dividing the absolute value of the difference in means by the average of the means, then multiplying by 100. The standard deviation for the annual treatment sample is 0.9662380 cm and for the control treatment sample standard deviation is 0.8668646 cm, which is just less than a 0.1 cm difference in this measure of spread within samples. The Welch 2-sample t-test accounts for unequal variance withing sample distributions. The t-test produced a p-value of 0.2536, which means that there is a 25.36% likelihood that we would have randomly selected two samples from the same population with means at least as different from each other as the means observed in our samples.
+
